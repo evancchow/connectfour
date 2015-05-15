@@ -149,13 +149,14 @@ class Board():
         print "--------------------------"
 
 from controller import *
+from neuralnet import *
 
 if __name__=="__main__":
 
     """ Run a sample game with the controller module. """
     nrows, ncols = 6, 7
     board = Board(rows=nrows, cols=ncols)
-    red_player = StuckPlayer(1, board)
+    red_player = MLPPlayer(1, board)
     black_player = RandPlayer(2, board)
 
     for i in xrange(64):
