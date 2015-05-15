@@ -111,6 +111,12 @@ class Board():
     def getRow(self, row):
         return self.board[row, :]
 
+    def getNumCols(self):
+        return self.ncols
+
+    def getNumRows(self):
+        return self.nrows
+
     def randomize(self):
         # Randomize the board with 0's, 1's, and 2's, still noting
         # the effects of gravity (pieces fall to bottom). Does not
@@ -142,29 +148,54 @@ class Board():
             print
         print "--------------------------"
 
+from controller import *
+
 if __name__=="__main__":
 
-    # Run a sample game. Both sides here just play randomly.
+    """ Run a sample game with the controller module. """
     nrows, ncols = 6, 7
     board = Board(rows=nrows, cols=ncols)
+    red_player = RandPlayer(1, board)
+    black_player = RandPlayer(2, board)
+
     for i in xrange(64):
-        print "Next: move %d. %s\'s turn!" % (i,
-            ("RED" if i % 2 == 0 else "BLACK"))
-
-        # Get a random available column
-        avail_cols = board.availCols()
-        if len(avail_cols) == 0:
-            print "NEITHER RED OR BLACK WIN\n"
-            break
-        rand_col = random.choice(avail_cols)
-
-        if i % 2 == 0:
-            game_status = board.playRed(rand_col)
+        if i % 2 == 0: # red goes
+            print "RED moves"
+            red_move = red_player.play(board) # move is a column to play
+            game_status = board.playRed(red_move)
         else:
-            game_status = board.playBlack(rand_col)
+            print "BLACK moves"
+            black_move = black_player.play(board)
+            game_status = board.playBlack(black_move)
         board.show()
         print 
         if game_status > 0:
             print "%s wins!\n" % ("RED" if game_status == 1 else "BLACK")
             break
+
+    """ Run a sample game w/o controller module.
+        Both sides just play randomly. """
+
+    # nrows, ncols = 6, 7
+    # board = Board(rows=nrows, cols=ncols)
+    # for i in xrange(64):
+    #     print "Next: move %d. %s\'s turn!" % (i,
+    #         ("RED" if i % 2 == 0 else "BLACK"))
+
+    #     # Get a random available column
+    #     avail_cols = board.availCols()
+    #     if len(avail_cols) == 0:
+    #         print "NEITHER RED OR BLACK WIN\n"
+    #         break
+    #     rand_col = random.choice(avail_cols)
+
+    #     if i % 2 == 0:
+    #         game_status = board.playRed(rand_col)
+    #     else:
+    #         game_status = board.playBlack(rand_col)
+    #     board.show()
+    #     print 
+    #     if game_status > 0:
+    #         print "%s wins!\n" % ("RED" if game_status == 1 else "BLACK")
+    #         break
 
