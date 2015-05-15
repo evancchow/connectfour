@@ -105,6 +105,13 @@ class Board():
 
     """ Other utilities """
 
+    def flatten_scale(self):
+        # Get a flattened representation of the board (numpy array)
+        # for input to a neural network. 
+        # Scale into range (0, 1) for neural net. Note can just multiply by
+        # 1/2 since only values are 0, 1, 2
+        return np.asarray(self.board.reshape(-1, 1)) * (1/2)
+
     def getCol(self, col):
         return self.board[:, col]
 
