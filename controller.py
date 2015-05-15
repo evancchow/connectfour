@@ -3,6 +3,9 @@
     into board.py. """
 
 from board import *
+import numpy as np
+import theano
+import theano.tensor as T
 
 class Controller:
     """ Abstract class for the controller, representing
@@ -63,49 +66,28 @@ class StuckPlayer(Controller):
 
 """ The Neural Network """
 
-from board import *
-from controller import *
-
-class MLPPlayer(Controller):
-
-    def play(self, inputBoard):
-
-        # just little shortcut "cls()" for clearing screen
-        import os, theano
-        import theano.tensor as T
-        cls = lambda: os.system("cls")
-
-        # for testing
-        inputBoard.randomize()
-        def floatX(x): return np.asarray(x, dtype=theano.config.floatX)
-        x1 = floatX(inputBoard.board.reshape(-1, 1)) # the input vector
-        
-        import code; code.interact(local=locals())
-
-        avail_cols = inputBoard.availCols()
-
-""" Neural network classes. """
-
 class HiddenLayer(object):
+    """ A hidden layer """
     # from http://deeplearning.net/tutorial/mlp.html
-    def __init__(self, rng, input, n_in, n_out, W=None, b=None):
+    def __init__(self, rng, input, n_in, n_out, W=None, b=None,
+            activation=T.tanh):
         self.input = input
         if W is None:
-            W_values = numpy.asarray( # initial randomly sampled weight mat.
+            W_values = np.asarray( # initial randomly sampled weight mat.
                 rng.uniform(
-                    low=-numpy.sqrt(6. / (n_in + n_out)),
-                    high=numpy.sqrt(6. / (n_in + n_out)),
+                    low=-np.sqrt(6. / (n_in + n_out)),
+                    high=np.sqrt(6. / (n_in + n_out)),
                     size=(n_in, n_out)
                 ),
                 dtype=theano.config.floatX
             )
-            if activation == theano.tensor.nnet.sigmoid:
+            if activation == T.nnet.sigmoid:
                 W_values *= 4
 
             W = theano.shared(value=W_values, name='W', borrow=True)
 
         if b is None:
-            b_values = numpy.zeros((n_out,), dtype=theano.config.floatX)
+            b_values = np.zeros((n_out,), dtype=theano.config.floatX)
             b = theano.shared(value=b_values, name='b', borrow=True)
 
         self.W = W
@@ -116,3 +98,26 @@ class HiddenLayer(object):
             lin_output if activation is None
             else activation(lin_output)
         )
+
+class MLPPlayer(Controller):
+
+    def play(self, inputBoard):
+
+        # just little shortcut "cls()" for clearing screen
+        import os
+        cls = lambda: os.system("cls")
+
+        # TEST THEANO
+        inputBoard.randomize()
+        def floatX(x): return np.asarray(x, dtype=theano.config.floatX)
+        rng = np.random.RandomState(1234)
+
+        # input vector. each element is a feature so of shape (1, -1)
+        x1 = floatX(inputBoard.board.reshape(1, -1))
+        layer1 = HiddenLayer(rng, x1, x1.shape[1], 80) # 80 hidden units
+
+        
+        # start up new console with variables
+        import code; code.interact(local=locals())
+
+        avail_cols = inputBoard.availCols()

@@ -149,7 +149,6 @@ class Board():
         print "--------------------------"
 
 from controller import *
-from neuralnet import *
 
 if __name__=="__main__":
 
