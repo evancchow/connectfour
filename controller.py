@@ -35,8 +35,14 @@ class RandPlayer(Controller):
 
     def play(self, inputBoard):
         """ Make a move by just choosing a random available column. """
+
+        # Check available columns to drop piece in.
+        # Generally, every controller's specific play() method will need this.
         avail_cols = inputBoard.availCols()
         if len(avail_cols) == 0:
+            # A double check to make sure there's available columns.
+            # Note: if you want the player to pass a turn, just return -1
+            # as below, and in board.py's main method, the player will pass.
             return -1
 
         # Return a random column to move in.
