@@ -5,7 +5,7 @@
     """
 
 import numpy as np
-import random
+import random, time
 
 class Board():
     # The idea is that you place your pieces at the top, and they
@@ -18,7 +18,7 @@ class Board():
 
     """ For playing pieces """
 
-    def __playPiece(self, piece_color, col, zero_index):
+    def __playPiece(self, piece_color, col):
         # Private method. 0-indexed
         # Place a piece (denoted by 1) at a given column.
 
@@ -36,15 +36,15 @@ class Board():
         # Return winner information (1 = RED, 2 = BLACK, -1 = neither yet)
         return self.isSolved()
 
-    def playRed(self, col, zero_index=False):
+    def playRed(self, col):
         # Place a RED piece (denoted by 1) at a given column.
         # Return status of game.
-        return self.__playPiece("red", col, zero_index)
+        return self.__playPiece("red", col)
 
-    def playBlack(self, col, zero_index=False):
+    def playBlack(self, col):
         # Place a BLACK piece (denoted by 2) at a given column.
         # Return status of game.
-        return self.__playPiece("black", col, zero_index)
+        return self.__playPiece("black", col)
 
     """ For checking whether the board is solved """
 
@@ -158,20 +158,31 @@ if __name__=="__main__":
     red_player = RandPlayer(1, board)
     black_player = RandPlayer(2, board)
 
+    import pdb
     for i in xrange(64):
+        # pdb.set_trace()
         if i % 2 == 0: # red goes
             print "RED moves"
             red_move = red_player.play(board) # move is a column to play
+            if red_move == -1: # in case you'd like RED to not move
+                print "RED will not make a move. "
+                continue
             game_status = board.playRed(red_move)
         else:
             print "BLACK moves"
             black_move = black_player.play(board)
+            if black_move == -1: # in case you'd like BLACK to not move
+                print "BLACK will not make a move. "
+                continue
             game_status = board.playBlack(black_move)
         board.show()
         print 
         if game_status > 0:
             print "%s wins!\n" % ("RED" if game_status == 1 else "BLACK")
             break
+
+        ## if want to see game in progress
+        time.sleep(0.5)
 
     """ Run a sample game w/o controller module.
         Both sides just play randomly. """
