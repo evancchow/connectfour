@@ -44,11 +44,13 @@ class RandPlayer(Controller):
         return rand_col 
 
 class StuckPlayer(Controller):
-    """ Example controller for a player who only plays in the first
-        column. """
+    """ Another demo controller for a player who only plays 
+        in the first column. """
 
     def play(self, inputBoard):
         """ Put piece in first column, otherwise pass. """
         avail_cols = inputBoard.availCols()
-        if 1 not in avail_cols:
-            pass
+        if 0 not in avail_cols:
+            return -1
+        else:
+            return 0 # first column

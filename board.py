@@ -155,21 +155,19 @@ if __name__=="__main__":
     """ Run a sample game with the controller module. """
     nrows, ncols = 6, 7
     board = Board(rows=nrows, cols=ncols)
-    red_player = RandPlayer(1, board)
+    red_player = StuckPlayer(1, board)
     black_player = RandPlayer(2, board)
 
-    import pdb
     for i in xrange(64):
-        # pdb.set_trace()
         if i % 2 == 0: # red goes
-            print "RED moves"
+            print "RED moves next:"
             red_move = red_player.play(board) # move is a column to play
             if red_move == -1: # in case you'd like RED to not move
                 print "RED will not make a move. "
                 continue
             game_status = board.playRed(red_move)
         else:
-            print "BLACK moves"
+            print "BLACK moves next: "
             black_move = black_player.play(board)
             if black_move == -1: # in case you'd like BLACK to not move
                 print "BLACK will not make a move. "
@@ -182,7 +180,7 @@ if __name__=="__main__":
             break
 
         ## if want to see game in progress
-        time.sleep(0.5)
+        time.sleep(1)
 
     """ Run a sample game w/o controller module.
         Both sides just play randomly. """
