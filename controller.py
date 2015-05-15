@@ -71,22 +71,39 @@ class StuckPlayer(Controller):
 
 class HiddenLayer(object):
     """ A hidden layer """
+
+    # The input to the hidden layer is a board position, and the MLP
+    # should calculate the probability of winning from that board position.
+    # Therefore, for the MLP we feed in all possible inputs (based on
+    # all possible moves the player can make). Once we get the winning
+    # probabilities for each of these possible moves, we choose the move
+    # with the highest probability. Then, we update the MLP based on that
+    # move.
+
+    # input is (n_in, 1)
+    # weights are (n_out, n_in)
+    # bias is (n_out, 1)
+    # so you do dot(weights, input)
+
     # from http://deeplearning.net/tutorial/mlp.html
-    def __init__(self, rng, input, n_in, n_out, W=None, b=None,
-            activation=T.tanh):
+    def __init__(self, input, n_in, n_out, W=None, b=None,
+            activation=T.nnet.sigmoid, rng=None):
         self.input = input
+        if rng is None:
+            self.rng = np.random.RandomState(1234)
         if W is None:
             W_values = np.asarray( # initial randomly sampled weight mat.
-                rng.uniform(
+                self.rng.uniform(
                     low=-np.sqrt(6. / (n_in + n_out)),
                     high=np.sqrt(6. / (n_in + n_out)),
-                    size=(n_in, n_out)
+                    size=(n_out, n_in)
                 ),
                 dtype=theano.config.floatX
             )
             if activation == T.nnet.sigmoid:
                 W_values *= 4
 
+            # to get shared values, call "HiddenLayer.W.get_value()"
             W = theano.shared(value=W_values, name='W', borrow=True)
 
         if b is None:   
@@ -96,12 +113,23 @@ class HiddenLayer(object):
         self.W = W
         self.b = b
 
-        lin_output = T.dot(input, self.W) + self.b
+        lin_output = T.dot(self.W, input) + self.b
         self.output = (
             lin_output if activation is None
             else activation(lin_output)
         )
 
+        # Output shape. Sends out a vector into the next layer!
+        self.num_output = n_out
+
+        # The parameters
+        self.params = [self.W, self.b]
+
+        """ TD Lambda stuff here """
+
+        # to update after each move, with gradients
+        self.lambda_decay = 0.5
+        self.eligibility = 0
 
 def floatX(x): return np.asarray(x, dtype=theano.config.floatX)
 
@@ -121,23 +149,29 @@ class MLPPlayer(Controller):
 
         """ Initialize neural network """
 
-        # input layer, flattened input so dimensions is (numsquares, 1)
-        self.l_in = lasagne.layers.InputLayer(board.flatten_scale())
+        self.num_hidden_units = 50
 
-        # hidden layer
-        self.l_hidden = lasagne.layers.DenseLayer(self.l_in, num_units=50)
+        # The first hidden layer. Feed inputs directly into this.
+        self.l_hidden = HiddenLayer(board.flattenScaleCurr(), 
+            self.nrows * self.ncols, self.num_hidden_units)
 
-        # output layer. Number of units is number of columns, but note that
-        # some columns may be full at some point. So, continue to train each
-        # of the output layer units, but when making a move, if the best
-        # (smallest probability of other player winning) column is full,
-        # just choose the next best column.
-        self.l_out = lasagne.layers.DenseLayer(self.l_hidden, 
-            num_units=self.ncols, nonlinearity=T.nnet.softmax)
+        # The output layer, which is a softmax layer. Note that you only need
+        # ONE output unit, since given the input (a possible move -->
+        # some board position), you want to estimate the probability
+        # of winning.
+        self.num_output_units = 1
+        self.l_output = LogisticRegression(self.l_hidden.output,
+            self.l_hidden.num_output, self.num_output_units)
 
-        objective = lasagne.objectives.Objective(self.l_out,
-            loss_function =)
+        # The error functions
+        self.negative_log_likelihood = self.l_output.negative_log_likelihood
+        self.errors = self.l_output.errors
 
+        # Get parameters
+        self.params = self.l_hidden.params + self.l_output.params
+
+        import os; cls=lambda: os.system("cls")
+        import code; code.interact(local=locals())
 
     def play(self, inputBoard):
         # Primary method which trains network and returns the move
@@ -145,27 +179,25 @@ class MLPPlayer(Controller):
         return self.makeMove()
 
     def train(self, inputBoard):
+        # Should start training AFTER first move, otherwise
+        # will get tons of 0's ... ?
 
-        # just little shortcut "cls()" for clearing screen
-        import os
-        cls = lambda: os.system("cls")
+        # Process input vector. each element is a feature so of shape (-1, 1)
+        # where rows are features
+        x1 = floatX(inputBoard.flattenScaleCurr())
 
-        # TEST THEANO
-        inputBoard.randomize()
-        rng = np.random.RandomState(1234)
-
-        # input vector. each element is a feature so of shape (1, -1)
-        x1 = floatX(inputBoard.board.reshape(1, -1))
-
-        # first layer
-
-
-        # layer1 = HiddenLayer(rng, x1, x1.shape[1], 80) # 80 hidden units
-        
-        # start up new console with variables
-        import code; code.interact(local=locals())
-
+        # Calculate output with forward pass for each possible move.
+        # Get the move with the largest probability estimate of winning
+        # (and also store that probability estimate which we use to
+        # update with backprop)
         avail_cols = inputBoard.availCols()
+        
+        # Once you have that largest move & probability estimate, you can
+        # now update the neural network using TD lambda.
+        pass
+
+
+
 
     def makeMove():
         return 1

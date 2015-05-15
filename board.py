@@ -105,9 +105,9 @@ class Board():
 
     """ Other utilities """
 
-    def flatten_scale(self):
-        # Get a flattened representation of the board (numpy array)
-        # for input to a neural network. 
+    def flattenScaleCurr(self):
+        # Get a flattened representation of the current board (numpy array)
+        # state for input to a neural network. 
         # Scale into range (0, 1) for neural net. Note can just multiply by
         # 1/2 since only values are 0, 1, 2
         return np.asarray(self.board.reshape(-1, 1)) * (1/2)
@@ -123,6 +123,16 @@ class Board():
 
     def getNumRows(self):
         return self.nrows
+
+    def removePiece(self, col):
+        # Remove the top piece in a column.
+        curr_col = self.getCol(col)
+        for px, piece in enumerate(curr_col):
+            if piece > 0:
+                # set back to 0
+                self.board[px, col] = 0
+                return
+        return
 
     def randomize(self):
         # Randomize the board with 0's, 1's, and 2's, still noting

@@ -1,3 +1,7 @@
+import theano
+import theano.tensor as T
+import numpy as np
+
 class LogisticRegression(object):
     """Multi-class Logistic Regression Class
 
@@ -26,7 +30,7 @@ class LogisticRegression(object):
         # start-snippet-1
         # initialize with 0 the weights W as a matrix of shape (n_in, n_out)
         self.W = theano.shared(
-            value=numpy.zeros(
+            value=np.zeros(
                 (n_in, n_out),
                 dtype=theano.config.floatX
             ),
@@ -35,7 +39,7 @@ class LogisticRegression(object):
         )
         # initialize the baises b as a vector of n_out 0s
         self.b = theano.shared(
-            value=numpy.zeros(
+            value=np.zeros(
                 (n_out,),
                 dtype=theano.config.floatX
             ),
@@ -60,6 +64,10 @@ class LogisticRegression(object):
 
         # parameters of the model
         self.params = [self.W, self.b]
+
+        """ TD Lambda stuff here """
+        self.lambda_decay = 0.5
+        self.eligibility = 0
 
     def negative_log_likelihood(self, y):
         """Return the mean of the negative log-likelihood of the prediction
