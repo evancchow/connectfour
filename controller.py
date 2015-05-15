@@ -170,8 +170,33 @@ class MLPPlayer(Controller):
         # Get parameters
         self.params = self.l_hidden.params + self.l_output.params
 
-        import os; cls=lambda: os.system("cls")
+        # import os; cls=lambda: os.system("cls")
+        # import code; code.interact(local=locals())
+
+        # Just a couple of compiled Theano functions for sigmoid.
+        x = T.matrix()
+        z = T.nnet.sigmoid(x)
+        self.sigmoid = theano.function([x], z)
+
+    def getProbEstimate(self, input_vector):
+        # Given the flattened, scaled version of the board,
+        # run a forward pass to get the probability estimate, i.e.
+        # the value function.
+
+        # should use theano functions if more time
+        W_hidden = self.l_hidden.W.get_value()
+        b_hidden = self.l_hidden.b.get_value()
+        W_output = self.l_output.W.get_value()
+        b_output = self.l_output.b.get_value()
+
+        # run forward pass
+        y_hidden = self.sigmoid(np.dot(W_hidden, 
+            np.transpose(input_vector)) + b_hidden)
+
         import code; code.interact(local=locals())
+
+
+        pass
 
     def play(self, inputBoard):
         # Primary method which trains network and returns the move
@@ -191,6 +216,24 @@ class MLPPlayer(Controller):
         # (and also store that probability estimate which we use to
         # update with backprop)
         avail_cols = inputBoard.availCols()
+        for col in avail_cols:
+            # Drop a piece into a column to get the possible board
+            # if you put a piece there. (Save memory,, not create new boards)
+            inputBoard.playRed(col)
+
+            # Get the flattened board representation
+            input_vect = inputBoard.flattenScaleCurr()
+
+            # Now that you're done evaluating the possible board, remove the
+            # piece you just put in
+            inputBoard.removePiece(col)
+
+            # Run a forward pass with your neural network to get the
+            # probability estimate.
+            input_prob = self.getProbEstimate(input_vect)
+
+            # TODO
+            print "The probability estimate is: "
         
         # Once you have that largest move & probability estimate, you can
         # now update the neural network using TD lambda.
@@ -208,8 +251,14 @@ if __name__=="__main__":
 
     # debugging
     board = Board(6, 7)
-    board.randomize()
+    board.board = np.asarray([ # for debugging
+        [0, 2, 2, 0, 2, 0, 0],
+        [0, 1, 2, 0, 1, 0, 0],
+        [0, 1, 1, 0, 2, 2, 1],
+        [0, 1, 2, 0, 1, 2, 1],
+        [2, 2, 2, 1, 1, 1, 2],
+        [1, 1, 2, 2, 2, 1, 1]])
+    print "Current board:"
+    board.show()
     test_player = MLPPlayer(1, board)
-
-    for i in range(5):
-        test_player.play(board)
+    test_player.train(board)
