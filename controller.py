@@ -173,10 +173,13 @@ class MLPPlayer(Controller):
         # import os; cls=lambda: os.system("cls")
         # import code; code.interact(local=locals())
 
-        # Just a couple of compiled Theano functions for sigmoid.
-        x = T.matrix()
-        z = T.nnet.sigmoid(x)
-        self.sigmoid = theano.function([x], z)
+        # Just a couple of compiled Theano functions for sigmoid and softmax.
+        # This is for calculating forward pass.
+        x1 = T.matrix() # some linear combination wx + b
+        z1 = T.nnet.sigmoid(x1)
+        self.sigmoid = theano.function([x1], z1)
+        z2 = T.nnet.softmax(x1)
+        self.softmax = theano.function([x1], z2)
 
     def getProbEstimate(self, input_vector):
         # Given the flattened, scaled version of the board,
@@ -185,13 +188,14 @@ class MLPPlayer(Controller):
 
         # should use theano functions if more time
         W_hidden = self.l_hidden.W.get_value()
-        b_hidden = self.l_hidden.b.get_value()
+        b_hidden = self.l_hidden.b.get_value().reshape(-1, 1)
         W_output = self.l_output.W.get_value()
-        b_output = self.l_output.b.get_value()
+        b_output = self.l_output.b.get_value().reshape(-1, 1)
 
         # run forward pass
-        y_hidden = self.sigmoid(np.dot(W_hidden, 
-            np.transpose(input_vector)) + b_hidden)
+        y_hidden = self.sigmoid(np.dot(W_hidden, input_vector) + b_hidden)
+        y_output = self.softmax(np.dot(np.transpose(W_output), y_hidden)
+         + b_output)
 
         import code; code.interact(local=locals())
 
