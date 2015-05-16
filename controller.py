@@ -10,6 +10,8 @@ import theano
 import theano.tensor as T
 import lasagne
 
+import code
+
 class Controller:
     """ Abstract class for the controller, representing
         a player. """
@@ -176,6 +178,23 @@ class MLPPlayer(Controller):
         z2 = T.nnet.softmax(x1) # can probably take out
         self.softmax = theano.function([x1], z2)
 
+        """ For the neural network training """
+        # self.l_output.currprob = [0, 0]
+        # self.l_output.currmove = [0, 0]
+        self.backpropsum = 0.0
+
+        self.currprob = [0, 0]
+        self.currmove = [0, 0]
+
+        # Create the error function for the MLP
+        self.LAMBDA_DECAY = 0.5
+        self.y_t1 = T.dscalar('y_t1')
+        self.y_t = T.dscalar('y_t')
+        self.lag = T.dscalar('lag')
+        # self.f_error = (self.LAMBDA_DECAY**self.lag)*(self.y_t1 - self.y_t)
+        # self.f_error = abs(self.y_t1 - self.y_t)
+        self.f_error = abs(self.p_y_given_x - )
+
     def getProbEstimate(self, input_vector):
         # Given the flattened, scaled version of the board,
         # run a forward pass to get the probability estimate, i.e.
@@ -211,7 +230,12 @@ class MLPPlayer(Controller):
         for col in avail_cols:
             # Drop a piece into a column to get the possible board
             # if you put a piece there. (Save memory,, not create new boards)
-            inputBoard.playRed(col)
+            if self.playerColor == 1:
+                inputBoard.playRed(col)
+            else:
+                inputBoard.playBlack(col)
+
+            board.show()
 
             # Get the flattened board representation
             input_vect = inputBoard.flattenScaleCurr()
@@ -220,12 +244,13 @@ class MLPPlayer(Controller):
             # piece you just put in
             inputBoard.removePiece(col)
 
-            # Run a forward pass with your neural network to get the
+            # Run a forward pass with your neural netwoirk to get the
             # probability estimate.
             est_prob = self.getProbEstimate(input_vect)
 
             # TODO
-            # print "The probability estimate RED wins is: %.2f" % est_prob
+            print "The probability estimate %s wins is: %.2f" % (
+                self.playerColor, est_prob)
 
             # update best move, probability
             if best_prob < est_prob:
@@ -236,14 +261,20 @@ class MLPPlayer(Controller):
         # now update the neural network using TD lambda.
 
         # Update last move (maybe need for TD Lambda)
-        self.currprob = best_prob
-        self.currmove = best_move
+        self.currprob = [self.currprob[-1], best_prob]
+        self.currmove = [self.currmove[-1], best_move]
 
         """ Run Backprop """
+        self.backprop()
 
     def backprop(self):
+        print "Calculating error ..."
+        print self.params
+        gparams = [T.grad(self.f_error, param) 
+            for param in self.params]
+        code.interact(local=locals())
         pass
-        
+
     def play(self, inputBoard):
         # Primary method which trains network and returns the move
         self.train(inputBoard)
@@ -264,5 +295,10 @@ if __name__=="__main__":
 
     print "Current board:"
     board.show()
-    test_player = MLPPlayer(1, board)
-    test_player.train(board)
+    red_test = MLPPlayer(1, board)
+    black_test = MLPPlayer(2, board)
+    
+    for i in xrange(2):
+        print "---------- round %s ----------" % i
+        red_test.play(board)
+        black_test.play(board)

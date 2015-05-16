@@ -68,7 +68,7 @@ class LogisticRegression(object):
         self.params = [self.W]
 
         """ TD Lambda stuff here """
-        self.lambda_decay = 0.5
+        self.lambda_decay = 0.5 # needs to be theano var?
         self.eligibility = 0
 
     def negative_log_likelihood(self, y):

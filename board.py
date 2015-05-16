@@ -228,4 +228,3 @@ if __name__=="__main__":
     #     if game_status > 0:
     #         print "%s wins!\n" % ("RED" if game_status == 1 else "BLACK")
     #         break
-
