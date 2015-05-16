@@ -184,16 +184,12 @@ class MLPPlayer(Controller):
         self.backpropsum = 0.0
 
         self.currprob = [0, 0]
-        self.currmove = [0, 0]
+        self.currmove = [0, 0] # Y_{t} - Y_{t-1}
 
-        # Create the error function for the MLP
+        # Create matrices for backprop, lambda, etc. for TD-Lambda
         self.LAMBDA_DECAY = 0.5
-        self.y_t1 = T.dscalar('y_t1')
-        self.y_t = T.dscalar('y_t')
-        self.lag = T.dscalar('lag')
-        # self.f_error = (self.LAMBDA_DECAY**self.lag)*(self.y_t1 - self.y_t)
-        # self.f_error = abs(self.y_t1 - self.y_t)
-        self.f_error = abs(self.p_y_given_x - )
+        self.l_
+
 
     def getProbEstimate(self, input_vector):
         # Given the flattened, scaled version of the board,
