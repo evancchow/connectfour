@@ -30,14 +30,10 @@ class LogisticRegression(object):
         # start-snippet-1
         # initialize with 0 the weights W as a matrix of shape (n_in, n_out)
         self.rng = np.random.RandomState(1234)
-        self.W = theano.shared(
-            value=np.array(self.rng.uniform(
+        self.W = np.array(self.rng.uniform(
                     low=-np.sqrt(6. / (n_in + n_out)),
                     high=np.sqrt(6. / (n_in + n_out)),
                     size=(n_out, n_in)), dtype=theano.config.floatX),
-            name='W',
-            borrow=True
-        )
 
 
         # self.W = theano.shared(

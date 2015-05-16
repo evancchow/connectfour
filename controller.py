@@ -8,7 +8,7 @@ from LogisticRegression import *
 import numpy as np
 import theano
 import theano.tensor as T
-import lasagne
+import lasagne as nn
 
 import code
 
@@ -71,63 +71,6 @@ class StuckPlayer(Controller):
 
 """ The Neural Network """
 
-class HiddenLayer(object):
-    """ A hidden layer """
-
-    # The input to the hidden layer is a board position, and the MLP
-    # should calculate the probability of winning from that board position.
-    # Therefore, for the MLP we feed in all possible inputs (based on
-    # all possible moves the player can make). Once we get the winning
-    # probabilities for each of these possible moves, we choose the move
-    # with the highest probability. Then, we update the MLP based on that
-    # move.
-
-    # input is (n_in, 1)
-    # weights are (n_out, n_in)
-    # bias is (n_out, 1)
-    # so you do dot(weights, input)
-
-    # from http://deeplearning.net/tutorial/mlp.html
-    def __init__(self, input, n_in, n_out, W=None, b=None,
-            activation=T.nnet.sigmoid, rng=None):
-        self.input = input
-        if rng is None:
-            self.rng = np.random.RandomState(1234)
-        if W is None:
-            W_values = np.asarray( # initial randomly sampled weight mat.
-                self.rng.uniform(
-                    low=-np.sqrt(6. / (n_in + n_out)),
-                    high=np.sqrt(6. / (n_in + n_out)),
-                    size=(n_out, n_in)
-                ),
-                dtype=theano.config.floatX
-            )
-            if activation == T.nnet.sigmoid:
-                W_values *= 4
-
-            # to get shared values, call "HiddenLayer.W.get_value()"
-            W = theano.shared(value=W_values, name='W', borrow=True)
-
-        self.W = W
-
-        lin_output = T.dot(self.W, input)
-        self.output = (
-            lin_output if activation is None
-            else activation(lin_output)
-        )
-
-        # Output shape. Sends out a vector into the next layer!
-        self.num_output = n_out
-
-        # The parameters
-        self.params = [self.W]
-
-        """ TD Lambda stuff here """
-
-        # to update after each move, with gradients
-        self.lambda_decay = 0.5
-        self.eligibility = 0
-
 def floatX(x): return np.asarray(x, dtype=theano.config.floatX)
 
 class MLPPlayer(Controller):
@@ -144,68 +87,95 @@ class MLPPlayer(Controller):
         self.nrows = board.getNumRows()
         self.ncols = board.getNumCols() # technically don't need, in board
 
-        """ Initialize neural network """
-
-        self.num_hidden_units = 50
-
-        # The first hidden layer. Feed inputs directly into this.
-        self.l_hidden = HiddenLayer(board.flattenScaleCurr(), 
-            self.nrows * self.ncols, self.num_hidden_units)
-
-        # The output layer, which is a softmax layer. Note that you only need
-        # ONE output unit, since given the input (a possible move -->
-        # some board position), you want to estimate the probability
-        # of winning.
-        self.num_output_units = 1
-        self.l_output = LogisticRegression(self.l_hidden.output,
-            self.l_hidden.num_output, self.num_output_units)
-
-        # The error functions
-        self.negative_log_likelihood = self.l_output.negative_log_likelihood
-        self.errors = self.l_output.errors
-
-        # Get parameters
-        self.params = self.l_hidden.params + self.l_output.params
-
-        # import os; cls=lambda: os.system("cls")
-        # import code; code.interact(local=locals())
-
-        # Just a couple of compiled Theano functions for sigmoid and softmax.
-        # This is for calculating forward pass.
-        x1 = T.matrix() # some linear combination wx + b
-        z1 = T.nnet.sigmoid(x1)
-        self.sigmoid = theano.function([x1], z1)
-        z2 = T.nnet.softmax(x1) # can probably take out
-        self.softmax = theano.function([x1], z2)
-
-        """ For the neural network training """
-        # self.l_output.currprob = [0, 0]
-        # self.l_output.currmove = [0, 0]
+        """ Parameters for TD-Lambda """
+        self.LAMBDA = 0.5
+        self.currprob = [0, 0]
+        self.currmove = [0, 0]
         self.backpropsum = 0.0
 
-        self.currprob = [0, 0]
-        self.currmove = [0, 0] # Y_{t} - Y_{t-1}
+        """ Initialize neural network """
 
-        # Create matrices for backprop, lambda, etc. for TD-Lambda
-        self.LAMBDA_DECAY = 0.5
+        self.rng = np.random.RandomState(1234)
+        num_hidden = 50
+        n_in, n_out = self.nrows*self.ncols, num_hidden
 
+        # learning rate
+        self.eta = T.scalar()
+
+        # input
+        self.u = T.matrix()
+        # target (previous estimate!)
+        self.t = T.matrix() # may need to be single unit
+        # initial hidden state? maybe don't need
+        self.h0 = T.vector()
+        
+        # weights, input -> hidden
+        self.W_hidden = theano.shared(np.asarray(
+            self.rng.uniform(
+                low=-np.sqrt(6. / (n_in + n_out)),
+                high=np.sqrt(6. / (n_in + n_out)),
+                size=(n_out, n_in)), dtype=theano.config.floatX)*4)
+
+        # weights, hidden -> output
+        num_out = 1
+        self.W_out = theano.shared(np.asarray(
+            self.rng.uniform(
+                low=-np.sqrt(6. / (n_in + n_out)),
+                high=np.sqrt(6. / (n_in + n_out)),
+                size=(num_out, n_out)), dtype=theano.config.floatX)*4)
+
+        # Tiny function for forward
+        u_in = T.matrix()
+        self.y_out = theano.scalar.as_scalar(T.max(1.0 / (1 + T.exp(-1 * T.dot(self.W_out, T.nnet.sigmoid(T.dot(self.W_hidden, u_in))))))) # only 1-element array, can't get theano to cast to scalar. Had [0][0]
+
+        # here, turn y_out into scalar
+        self.f_out = theano.function([u_in], self.y_out)
+        # v = board.flattenScaleCurr()
+        # import code; code.interact(local=locals())
+
+    # Note that rnn_example.py has example of custom error function
+    # Feedforward
+    def forward(u, W_hidden, W_out):
+        h_t = T.nnet.sigmoid(T.dot(u, W_hidden))
+        y_t = T.nnet.sigmoid(T.dot(h_t, W_out)) # the estimate
+        return h_t, y_t
+
+    def get_gradients(self, input_vector, lambda_decay, best_prob):
+        # Recalculate gradients!
+
+        # A cost function. slightly different since abs val is not differentiable
+        y_target = T.scalar()
+        error = (lambda_decay * (1/2) * (y_target - self.y_out)**2).sum()
+        f_error = theano.function([y_target, self.y_out], error)
+
+        # Get gradients
+        grad_wh, grad_wo = T.grad(error, [self.W_hidden, self.W_out])
+        return grad_wh, grad_wo
+
+
+    def backprop(self, gradients, best_prob, backpropsum):
+        # Backpropagation for TD-Lambda, to train after every move.
+        # Note that you have the best prob passed in as a parameter here,
+        # so you can use that as part of your error function.
+
+        # # run forward pass. DEPRECATED because already have forward
+        # result, updates = theano.scan(self.forward,
+        #     sequences=self.u,
+        #     outputs_info=[],
+        #     non_sequences=[],
+            # n_steps=1)
+
+        # updates = [
+            # (param, param + )
+        # ]
+
+        import code; code.interact(local=locals())
 
     def getProbEstimate(self, input_vector):
         # Given the flattened, scaled version of the board,
         # run a forward pass to get the probability estimate, i.e.
         # the value function.
-
-        # should use theano functions if more time
-        W_hidden = self.l_hidden.W.get_value()
-        W_output = self.l_output.W.get_value()
-
-        # run forward pass
-        y_hidden = self.sigmoid(np.dot(W_hidden, input_vector))
-        y_output = self.sigmoid(np.dot(W_output, y_hidden))
-
-        # import code; code.interact(local=locals())
-
-        return y_output
+        return self.f_out(input_vector)
 
     def train(self, inputBoard):
         # Should start training AFTER first move, otherwise
@@ -259,16 +229,26 @@ class MLPPlayer(Controller):
         self.currprob = [self.currprob[-1], best_prob]
         self.currmove = [self.currmove[-1], best_move]
 
-        """ Run Backprop """
-        self.backprop()
+        """ Run Backprop. """
+        # Note that you need to have the lagged lambda and the
+        # previous best move. Note that you also need to keep a running
+        # sum of the past exponentially discounted backpropagations,
+        # so that's why way above you have the variable self.backpropsum.
 
-    def backprop(self):
-        print "Calculating error ..."
-        print self.params
-        gparams = [T.grad(self.f_error, param) 
-            for param in self.params]
-        code.interact(local=locals())
-        pass
+        ### TODO
+        ### Work on this first assuming that backprop works,
+        ### then go and actually code backprop using Theano.
+        ### you'll need the word doc
+        ### THIS IS NOT A LOOP. This is for one iteration!!
+
+        # get gradients, given that you have the lambda and the
+        # new best prob
+        grads = self.get_gradients(x1, self.LAMBDA, best_prob)
+
+        # then get backprop
+        self.backprop(grads, best_prob, self.backpropsum)
+
+        # update lambda, backprop sum
 
     def play(self, inputBoard):
         # Primary method which trains network and returns the move
