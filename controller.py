@@ -188,7 +188,6 @@ class MLPPlayer(Controller):
 
         # Create matrices for backprop, lambda, etc. for TD-Lambda
         self.LAMBDA_DECAY = 0.5
-        self.l_
 
 
     def getProbEstimate(self, input_vector):
