@@ -106,14 +106,9 @@ class HiddenLayer(object):
             # to get shared values, call "HiddenLayer.W.get_value()"
             W = theano.shared(value=W_values, name='W', borrow=True)
 
-        if b is None:   
-            b_values = np.zeros((n_out,), dtype=theano.config.floatX)
-            b = theano.shared(value=b_values, name='b', borrow=True)
-
         self.W = W
-        self.b = b
 
-        lin_output = T.dot(self.W, input) + self.b
+        lin_output = T.dot(self.W, input)
         self.output = (
             lin_output if activation is None
             else activation(lin_output)
@@ -123,7 +118,7 @@ class HiddenLayer(object):
         self.num_output = n_out
 
         # The parameters
-        self.params = [self.W, self.b]
+        self.params = [self.W]
 
         """ TD Lambda stuff here """
 
@@ -178,7 +173,7 @@ class MLPPlayer(Controller):
         x1 = T.matrix() # some linear combination wx + b
         z1 = T.nnet.sigmoid(x1)
         self.sigmoid = theano.function([x1], z1)
-        z2 = T.nnet.softmax(x1)
+        z2 = T.nnet.softmax(x1) # can probably take out
         self.softmax = theano.function([x1], z2)
 
     def getProbEstimate(self, input_vector):
@@ -188,24 +183,15 @@ class MLPPlayer(Controller):
 
         # should use theano functions if more time
         W_hidden = self.l_hidden.W.get_value()
-        b_hidden = self.l_hidden.b.get_value().reshape(-1, 1)
         W_output = self.l_output.W.get_value()
-        b_output = self.l_output.b.get_value().reshape(-1, 1)
 
         # run forward pass
-        y_hidden = self.sigmoid(np.dot(W_hidden, input_vector) + b_hidden)
-        y_output = self.softmax(np.dot(np.transpose(W_output), y_hidden)
-         + b_output)
+        y_hidden = self.sigmoid(np.dot(W_hidden, input_vector))
+        y_output = self.sigmoid(np.dot(W_output, y_hidden))
 
-        import code; code.interact(local=locals())
+        # import code; code.interact(local=locals())
 
-
-        pass
-
-    def play(self, inputBoard):
-        # Primary method which trains network and returns the move
-        self.train(inputBoard)
-        return self.makeMove()
+        return y_output
 
     def train(self, inputBoard):
         # Should start training AFTER first move, otherwise
@@ -220,6 +206,8 @@ class MLPPlayer(Controller):
         # (and also store that probability estimate which we use to
         # update with backprop)
         avail_cols = inputBoard.availCols()
+        best_move = -1 # a column
+        best_prob = 0
         for col in avail_cols:
             # Drop a piece into a column to get the possible board
             # if you put a piece there. (Save memory,, not create new boards)
@@ -234,22 +222,33 @@ class MLPPlayer(Controller):
 
             # Run a forward pass with your neural network to get the
             # probability estimate.
-            input_prob = self.getProbEstimate(input_vect)
+            est_prob = self.getProbEstimate(input_vect)
 
             # TODO
-            print "The probability estimate is: "
-        
+            # print "The probability estimate RED wins is: %.2f" % est_prob
+
+            # update best move, probability
+            if best_prob < est_prob:
+                best_prob = est_prob
+                best_move = col
+
         # Once you have that largest move & probability estimate, you can
         # now update the neural network using TD lambda.
+
+        # Update last move (maybe need for TD Lambda)
+        self.currprob = best_prob
+        self.currmove = best_move
+
+        """ Run Backprop """
+
+    def backprop(self):
         pass
-
-
-
-
-    def makeMove():
-        return 1
-
-
+        
+    def play(self, inputBoard):
+        # Primary method which trains network and returns the move
+        self.train(inputBoard)
+        return self.currmove
+        
 if __name__=="__main__":
     # questions could be different eval functions
 
@@ -262,6 +261,7 @@ if __name__=="__main__":
         [0, 1, 2, 0, 1, 2, 1],
         [2, 2, 2, 1, 1, 1, 2],
         [1, 1, 2, 2, 2, 1, 1]])
+
     print "Current board:"
     board.show()
     test_player = MLPPlayer(1, board)

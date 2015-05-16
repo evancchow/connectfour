@@ -29,23 +29,25 @@ class LogisticRegression(object):
         """
         # start-snippet-1
         # initialize with 0 the weights W as a matrix of shape (n_in, n_out)
+        self.rng = np.random.RandomState(1234)
         self.W = theano.shared(
-            value=np.zeros(
-                (n_in, n_out),
-                dtype=theano.config.floatX
-            ),
+            value=np.array(self.rng.uniform(
+                    low=-np.sqrt(6. / (n_in + n_out)),
+                    high=np.sqrt(6. / (n_in + n_out)),
+                    size=(n_out, n_in)), dtype=theano.config.floatX),
             name='W',
             borrow=True
         )
-        # initialize the baises b as a vector of n_out 0s
-        self.b = theano.shared(
-            value=np.zeros(
-                (n_out,),
-                dtype=theano.config.floatX
-            ),
-            name='b',
-            borrow=True
-        )
+
+
+        # self.W = theano.shared(
+        #     value=np.zeros(
+        #         (n_in, n_out),
+        #         dtype=theano.config.floatX
+        #     ),
+        #     name='W',
+        #     borrow=True
+        # )
 
         # symbolic expression for computing the matrix of class-membership
         # probabilities
@@ -55,7 +57,7 @@ class LogisticRegression(object):
         # x is a matrix where row-j  represents input training sample-j
         # b is a vector where element-k represent the free parameter of hyper
         # plain-k
-        self.p_y_given_x = T.nnet.softmax(T.dot(input, self.W) + self.b)
+        self.p_y_given_x = T.nnet.softmax(T.dot(input, self.W))
 
         # symbolic description of how to compute prediction as class whose
         # probability is maximal
@@ -63,7 +65,7 @@ class LogisticRegression(object):
         # end-snippet-1
 
         # parameters of the model
-        self.params = [self.W, self.b]
+        self.params = [self.W]
 
         """ TD Lambda stuff here """
         self.lambda_decay = 0.5

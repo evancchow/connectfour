@@ -110,7 +110,7 @@ class Board():
         # state for input to a neural network. 
         # Scale into range (0, 1) for neural net. Note can just multiply by
         # 1/2 since only values are 0, 1, 2
-        return np.asarray(self.board.reshape(-1, 1)) * (1/2)
+        return np.asarray(self.board.reshape(-1, 1)) * - 1.0
 
     def getCol(self, col):
         return self.board[:, col]
@@ -173,31 +173,35 @@ if __name__=="__main__":
     nrows, ncols = 6, 7
     board = Board(rows=nrows, cols=ncols)
     red_player = MLPPlayer(1, board)
-    black_player = RandPlayer(2, board)
+    black_player = MLPPlayer(2, board)
 
     for i in xrange(64):
         if i % 2 == 0: # red goes
             print "RED moves next:"
             red_move = red_player.play(board) # move is a column to play
             if red_move == -1: # in case you'd like RED to not move
-                print "RED will not make a move. "
-                continue
+                print "RED yields. "
+                break
             game_status = board.playRed(red_move)
         else:
             print "BLACK moves next: "
             black_move = black_player.play(board)
             if black_move == -1: # in case you'd like BLACK to not move
-                print "BLACK will not make a move. "
-                continue
+                print "BLACK yields. "
+                break
             game_status = board.playBlack(black_move)
+
         board.show()
         print 
-        if game_status > 0:
-            print "%s wins!\n" % ("RED" if game_status == 1 else "BLACK")
-            break
-
-        ## if want to see game in progress
         time.sleep(1)
+
+        if game_status > 0:
+            break
+    if game_status > 0:
+        print "%s wins!\n" % ("RED" if game_status == 1 else "BLACK")
+    else:
+        print "Stalemate!"
+
 
     """ Run a sample game w/o controller module.
         Both sides just play randomly. """
